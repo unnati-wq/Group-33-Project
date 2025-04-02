@@ -1,0 +1,9 @@
+{
+    "rds_host": "project1.ceiiik2cxcfn.us-east-1.rds.amazonaws.com",
+    "rds_port": "5432",
+    "rds_user": "projectdbuser",
+    "rds_password": "projectdbpass33",
+    "rds_db": "",
+    "server_host": "localhost",
+    "server_port": "8080"
+  }
