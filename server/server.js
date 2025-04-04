@@ -13,9 +13,10 @@ app.use(cors({
 
 app.get('/search_books', routes.search_books);
 app.get('/top/:type', routes.top);
-app.get('/profile/:type', routes.profile);
-app.get('/book_of_the_day', routes.recommendation);
-app.get('/popular_genre', routes.popular_genre);
+// app.get('/profile/:type', routes.profile);
+app.get('/daily/:type', routes.recommendation);
+// app.get('/popular_genre', routes.popular_genre);
+app.get('/review/:bookId', routes.review);
 
 app.listen(config.server_port, () => {
   console.log(`Server running at http://${config.server_host}:${config.server_port}/`)

@@ -23,6 +23,7 @@ connection.connect((err) => err && console.log(err));
  ******************/
 
 // Route 1: GET /search_books
+// http://localhost:8080/search_books?author=John&title=Ocean
 const search_books = async function (req, res) {
   const title = req.query.title ?? '';
   const author = req.query.author ?? '';
@@ -87,9 +88,9 @@ const search_books = async function (req, res) {
 };
 
 // Route 2: GET /top
+// http://localhost:8080/top/authors
 const top = async function (req, res) {
   const type = req.params.type;
-
   if (type === 'authors') {
     const query = `
       WITH AuthorRating AS (
@@ -140,17 +141,19 @@ const top = async function (req, res) {
       WHERE ar.AverageHelpfulness > (SELECT AVG(AverageHelpfulness) FROM AuthorRating)
         AND ar.NumberOfRatings > (SELECT AVG(NumberOfRatings) FROM AuthorRating)
         AND ar.AverageRating > (SELECT AVG(AverageRating) FROM AuthorRating)
-      ORDER BY ar.AverageRating DESC, ar.NumberOfRatings DESC, ar.AverageHelpfulness DESC;
+      ORDER BY ar.AverageRating DESC, ar.NumberOfRatings DESC, ar.AverageHelpfulness DESC
+      LIMIT 10;
     `;
 
     connection.query(query, (err, data) => {
       if (err) {
-        console.log(err);
+        console.error(err);
         res.status(500).json({});
       } else {
         res.json(data.rows);
       }
     });
+
   } else if (type === 'books') {
     const query = `
       SELECT 
@@ -161,54 +164,183 @@ const top = async function (req, res) {
       FROM Book b
       JOIN Review r ON b.BookId = r.BookId
       GROUP BY b.BookId, b.Title
-      ORDER BY AverageRating DESC, NumberOfRatings DESC;
+      ORDER BY AverageRating DESC, NumberOfRatings DESC
+      LIMIT 10;
     `;
 
     connection.query(query, (err, data) => {
       if (err) {
-        console.log(err);
+        console.error(err);
         res.status(500).json({});
       } else {
         res.json(data.rows);
       }
     });
+
+  } else if (type === 'publishers') {
+    const query = `
+      WITH PublisherRating AS (
+        SELECT 
+          p.publisherid,
+          p.publishername AS PublisherName,
+          AVG(r.score) AS AverageRating,
+          AVG(r.helpfulness) AS AverageHelpfulness,
+          COUNT(DISTINCT r.userid) AS NumberOfRatings
+        FROM Book b
+        JOIN Review r ON b.bookid = r.bookid
+        JOIN Publisher p ON b.publisherid = p.publisherid
+        WHERE r.score IS NOT NULL
+        GROUP BY p.publisherid, p.publishername
+      )
+      SELECT 
+        PublisherName,
+        AverageRating,
+        NumberOfRatings,
+        AverageHelpfulness
+      FROM PublisherRating
+      WHERE AverageHelpfulness > (SELECT AVG(AverageHelpfulness) FROM PublisherRating)
+        AND NumberOfRatings > (SELECT AVG(NumberOfRatings) FROM PublisherRating)
+        AND AverageRating > (SELECT AVG(AverageRating) FROM PublisherRating)
+      ORDER BY AverageRating DESC, NumberOfRatings DESC, AverageHelpfulness DESC;
+    `;
+
+    connection.query(query, (err, data) => {
+      if (err) {
+        console.error(err);
+        res.status(500).json({});
+      } else {
+        res.json(data.rows);
+      }
+    });
+
   } else {
-    res.status(400).json({ error: 'Invalid type parameter. Use "authors" or "books".' });
+    res.status(400).json({ error: 'Invalid type parameter. Use "authors", "books", or "publishers".' });
   }
 };
+
 
 // Route 3: GET /profile
 
 
 // Route 4: GET /recommendation
+// http://localhost:8080/daily/book
 const recommendation = async function (req, res) {
-  // Execute the SQL query to fetch a random book recommendation
-  connection.query(`
-    SELECT
-      BookId,
-      Title
-    FROM
-      Book
-    WHERE
-      Price > 10 AND RatingsCount > 50
-    ORDER BY RANDOM()
-    LIMIT 1;
-  `, (err, data) => {
+  const type = req.params.type;
+
+  if (type === 'book') {
+    // SQL query for book recommendation
+    query = `
+      SELECT
+        BookId,
+        Title
+      FROM
+        Book
+      WHERE
+        Price > 10 AND RatingsCount > 50
+      ORDER BY RANDOM()
+      LIMIT 1;
+    `;
+  } else if (type === 'author') {
+    // SQL query for author recommendation
+    query = `
+      WITH AuthorRating AS (
+        SELECT 
+          a.AuthorId,
+          a.Name AS AuthorName,
+          AVG(r.Score) AS AverageRating,
+          COUNT(DISTINCT r.UserId) AS NumberOfRatings
+        FROM Book_Author ba
+        JOIN Review r ON ba.BookId = r.BookId
+        JOIN Author a ON ba.AuthorId = a.AuthorId
+        WHERE r.Score IS NOT NULL
+        GROUP BY a.AuthorId, a.Name
+      )
+      SELECT 
+        AuthorID,
+        AuthorName
+      FROM AuthorRating
+      WHERE 
+        NumberOfRatings > (SELECT AVG(NumberOfRatings) FROM AuthorRating)
+        AND AverageRating > (SELECT AVG(AverageRating) FROM AuthorRating)
+      ORDER BY RANDOM()
+      LIMIT 1;
+    `;
+  } else {
+    return res.status(400).json({ error: 'Invalid type parameter. Use "book" or "author".' });
+  }
+
+  // Execute the selected SQL query
+  connection.query(query, (err, data) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to fetch recommendation.' });
+    } else if (data.rows.length === 0) {
+      res.status(404).json({ error: 'No recommendations found.' });
+    } else {
+      if (type === 'book') {
+        res.json({
+          book_id: data.rows[0].bookid, 
+          title: data.rows[0].title,
+        });
+      } else if (type === 'author') {
+        res.json({
+          author_id: data.rows[0].authorid, 
+          name: data.rows[0].authorname,
+        });
+      }
+    }
+  });
+};
+
+// Route 5: GET /popular_genre
+
+// Route 6: GET /review
+// http://localhost:8080/review/0975438212
+const review = async function (req, res) {
+  const bookId = req.params.bookId;
+  let query = `
+    SELECT 
+      b.BookId,
+      b.Title,
+      AVG(r.Score) AS AverageRating,
+      COUNT(DISTINCT r.UserId) AS NumberOfRatings,
+      (SELECT summary
+       FROM Review
+       WHERE BookId = '${bookId}'
+       ORDER BY RANDOM()
+       LIMIT 1) AS RandomReview1,
+      (SELECT summary
+       FROM Review
+       WHERE BookId = '${bookId}'
+       ORDER BY RANDOM()
+       LIMIT 1) AS RandomReview2
+    FROM Book b
+    JOIN Review r ON b.BookId = r.BookId
+    WHERE r.Score IS NOT NULL
+      AND r.BookID = '${bookId}'
+    GROUP BY b.BookId, b.Title, RandomReview1, RandomReview2;
+  `;
+
+  connection.query(query, (err, data) => {
     if (err) {
       console.log(err);
       res.json({});
+    } else if (data.rows.length === 0) {
+      res.status(404).json({ error: 'No reviews found for the specified book.' });
     } else {
-      // Return the book ID and title of the randomly selected book
+      const result = data.rows[0];
       res.json({
-        book_id: data.rows[0].BookId,
-        title: data.rows[0].Title
+        book_id: result.bookid,
+        title: result.title,
+        average_rating: result.averagerating,
+        number_of_ratings: result.numberofratings,
+        random_review_1: result.randomreview1,
+        random_review_2: result.randomreview2,
       });
     }
   });
 };
 
-
-// Route 5: GET /popular_genre
 
 module.exports = {
   search_books,
@@ -216,4 +348,5 @@ module.exports = {
   // profile,
   recommendation,
   // popular_genre,
+  review,
 }
