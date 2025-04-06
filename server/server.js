@@ -13,9 +13,9 @@ app.use(cors({
 
 app.get('/search_books', routes.search_books);
 app.get('/top/:type', routes.top);
-// app.get('/profile/:type', routes.profile);
+app.get('/profile/:type', routes.profile);
 app.get('/daily/:type', routes.recommendation);
-// app.get('/popular_genre', routes.popular_genre);
+app.get('/popular_genre', routes.popular_genre);
 app.get('/review/:bookId', routes.review);
 
 app.listen(config.server_port, () => {

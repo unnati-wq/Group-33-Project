@@ -1,11 +1,8 @@
 const { Pool, types } = require('pg');
 const config = require('./config.json')
 
-// Override the default parsing for BIGINT (PostgreSQL type ID 20)
-types.setTypeParser(20, val => parseInt(val, 10)); //DO NOT DELETE THIS
+types.setTypeParser(20, val => parseInt(val, 10));
 
-// Create PostgreSQL connection using database credentials provided in config.json
-// Do not edit. If the connection fails, make sure to check that config.json is filled out correctly
 const connection = new Pool({
   host: config.rds_host,
   user: config.rds_user,
@@ -220,6 +217,160 @@ const top = async function (req, res) {
 
 
 // Route 3: GET /profile
+// http://localhost:8080/profile/author?id=18456
+// http://localhost:8080/profile/book?id=0613036107
+const profile = async function (req, res) {
+  const type = req.params.type;
+  const id = req.query.id; // Extract ID (authorId or bookId)
+
+  if (!id) {
+    return res.status(400).json({ error: 'Missing required parameter: id' });
+  }
+
+  let query;
+  let values = [id]; 
+
+  if (type === 'author') {
+    // SQL query for author profile
+    query = `
+      WITH AuthorBooks AS (
+        SELECT
+          b.BookId,
+          b.Title,
+          b.Price,
+          b.Image,
+          b.InfoLink,
+          b.PreviewLink,
+          b.RatingsCount,
+          AVG(r.Score) AS BookRating,
+          COUNT(r.ReviewId) AS ReviewCount,
+          ba.AuthorId
+        FROM Book b
+        JOIN Book_Author ba ON b.BookId = ba.BookId
+        LEFT JOIN Review r ON b.BookId = r.BookId
+        WHERE ba.AuthorId = $1
+        GROUP BY 
+          b.BookId, 
+          b.Title, 
+          b.Price, 
+          b.Image, 
+          b.InfoLink, 
+          b.PreviewLink, 
+          b.RatingsCount, 
+          ba.AuthorId
+      )
+      SELECT 
+        a.AuthorId,
+        a.Name AS AuthorName,
+        ab.BookId,
+        ab.Title,
+        ab.Price,
+        ab.Image,
+        ab.InfoLink,
+        ab.PreviewLink,
+        ab.RatingsCount,
+        ab.BookRating,
+        ab.ReviewCount,
+        (SELECT COUNT(DISTINCT BookId) FROM Book_Author WHERE AuthorId = a.AuthorId) AS TotalBooks,
+        (SELECT AVG(Score)
+         FROM Review r
+         JOIN Book_Author ba ON r.BookId = ba.BookId
+         WHERE ba.AuthorId = a.AuthorId) AS AuthorAverageRating
+      FROM Author a
+      JOIN AuthorBooks ab ON a.AuthorId = ab.AuthorId
+      WHERE a.AuthorId = $1
+      ORDER BY ab.BookRating DESC;
+    `;
+  } else if (type === 'book') {
+    // SQL query for book profile
+    query = `
+      WITH BookDetails AS (
+        SELECT
+          b.BookId,
+          b.Title,
+          b.Price,
+          b.Image,
+          b.InfoLink,
+          b.PreviewLink,
+          b.RatingsCount,
+          b.PublishedDate,
+          p.PublisherName,
+          (SELECT AVG(Score) FROM Review r WHERE r.BookId = $1) AS AverageRating,
+          (SELECT COUNT(ReviewId) FROM Review r WHERE r.BookId = $1) AS ReviewCount
+        FROM Book b
+        LEFT JOIN Publisher p ON b.PublisherId = p.PublisherId
+        WHERE b.BookId = $1
+      ),
+      BookAuthors AS (
+        SELECT 
+          ba.BookId, 
+          a.Name AS AuthorName
+        FROM Book_Author ba
+        JOIN Author a ON ba.AuthorId = a.AuthorId
+        WHERE ba.BookId = $1
+      ),
+      BookCategories AS (
+        SELECT 
+          bc.BookId, 
+          c.Genre
+        FROM Book_Category bc
+        JOIN Category c ON bc.CategoryId = c.CategoryId
+        WHERE bc.BookId = $1
+      ),
+      SimilarBooks AS (
+        SELECT 
+          b.BookId, 
+          b.Title, 
+          b.Image, 
+          b.RatingsCount, 
+          (SELECT AVG(Score) FROM Review r WHERE r.BookId = b.BookId) AS BookRating
+        FROM Book b
+        JOIN Book_Category bc1 ON b.BookId = bc1.BookId
+        JOIN Book_Category bc2 ON bc1.CategoryId = bc2.CategoryId
+        WHERE bc2.BookId = $1 AND b.BookId != $1
+        ORDER BY RANDOM()
+        FETCH FIRST 5 ROWS ONLY
+      )
+      SELECT 
+        bd.BookId, 
+        bd.Title, 
+        bd.Price, 
+        bd.Image, 
+        bd.InfoLink, 
+        bd.PreviewLink, 
+        bd.RatingsCount, 
+        bd.PublishedDate, 
+        bd.PublisherName, 
+        bd.AverageRating, 
+        bd.ReviewCount, 
+        (SELECT STRING_AGG(AuthorName, ', ') FROM BookAuthors) AS Authors, 
+        (SELECT STRING_AGG(Genre, ', ') FROM BookCategories) AS Genres, 
+        (SELECT COUNT(*) FROM SimilarBooks) AS RecommendationCount, 
+         CASE WHEN (SELECT COUNT(*) FROM SimilarBooks) > 0 THEN (
+           SELECT ARRAY_TO_STRING(
+             ARRAY_AGG(sb.Title || ' (Rating: ' || COALESCE(sb.BookRating, 0) || ')'), ', '
+           )
+           FROM SimilarBooks sb)
+         ELSE 'No recommendations available' END AS Recommendations
+       FROM BookDetails bd;
+    `;
+  } else {
+    // Handle invalid type parameter case.
+    return res.status(400).json({ error: 'Invalid type parameter. Use "author" or "book".' });
+  }
+
+  // Execute the SQL query and return results.
+  connection.query(query, values, (err, data) => {
+    if (err) {
+      console.error(err); 
+      res.status(500).json({ error: 'Failed to fetch profile.' });
+    } else if (data.rows.length === 0) {
+      res.status(404).json({ error: `No profile found for the given ${type} ID.` });
+    } else {
+      res.json(data.rows); 
+    }
+  });
+};
 
 
 // Route 4: GET /recommendation
@@ -293,6 +444,51 @@ const recommendation = async function (req, res) {
 };
 
 // Route 5: GET /popular_genre
+// http://localhost:8080/popular_genre
+const popular_genre = async function (req, res) {
+  // SQL query to fetch popular genres
+  const query = `
+    WITH GenrePopularity AS (
+      SELECT 
+        c.CategoryId,
+        c.Genre,
+        COUNT(DISTINCT bc.BookId) AS BookCount,
+        AVG(r.Score) AS AverageRating,
+        COUNT(DISTINCT r.UserId) AS UserEngagement
+      FROM Category c
+      JOIN Book_Category bc ON c.CategoryId = bc.CategoryId
+      JOIN Book b ON bc.BookId = b.BookId
+      LEFT JOIN Review r ON b.BookId = r.BookId
+      WHERE r.Score IS NOT NULL
+      GROUP BY c.CategoryId, c.Genre
+    )
+    SELECT 
+      Genre,
+      BookCount,
+      AverageRating,
+      UserEngagement
+    FROM GenrePopularity
+    WHERE 
+      UserEngagement > (SELECT AVG(UserEngagement) FROM GenrePopularity)
+      AND BookCount > (SELECT AVG(BookCount) FROM GenrePopularity)
+    ORDER BY 
+      AverageRating DESC,
+      UserEngagement DESC,
+      BookCount DESC
+    LIMIT 5;
+  `;
+
+  // Execute the SQL query
+  connection.query(query, (err, data) => {
+    if (err) {
+      console.log(err); 
+      res.json({}); 
+    } else {
+      res.json(data.rows); 
+    }
+  });
+};
+
 
 // Route 6: GET /review
 // http://localhost:8080/review/0975438212
@@ -345,8 +541,8 @@ const review = async function (req, res) {
 module.exports = {
   search_books,
   top,
-  // profile,
+  profile,
   recommendation,
-  // popular_genre,
+  popular_genre,
   review,
 }
