@@ -71,7 +71,8 @@ const search_books = async function (req, res) {
       AND c.genre LIKE '%${genre}%'
       AND bi.price BETWEEN ${priceLow} AND ${priceHigh}
       AND bi.AverageRating BETWEEN ${ratingLow} AND ${ratingHigh}
-    ORDER BY bi.AverageRating DESC;
+    ORDER BY bi.AverageRating DESC
+    LIMIT 10;
   `;
 
   connection.query(query, (err, data) => {
@@ -198,7 +199,8 @@ const top = async function (req, res) {
       WHERE AverageHelpfulness > (SELECT AVG(AverageHelpfulness) FROM PublisherRating)
         AND NumberOfRatings > (SELECT AVG(NumberOfRatings) FROM PublisherRating)
         AND AverageRating > (SELECT AVG(AverageRating) FROM PublisherRating)
-      ORDER BY AverageRating DESC, NumberOfRatings DESC, AverageHelpfulness DESC;
+      ORDER BY AverageRating DESC, NumberOfRatings DESC, AverageHelpfulness DESC
+      LIMIT 10;
     `;
 
     connection.query(query, (err, data) => {
