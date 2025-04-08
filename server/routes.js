@@ -383,15 +383,34 @@ const recommendation = async function (req, res) {
   if (type === 'book') {
     // SQL query for book recommendation
     query = `
-      SELECT
-        BookId,
-        Title
-      FROM
-        Book
-      WHERE
-        Price > 10 AND RatingsCount > 50
-      ORDER BY RANDOM()
-      LIMIT 1;
+      WITH BookMetrics AS (
+        SELECT 
+          b.BookId,
+          b.Title,
+          b.Price,
+          b.RatingsCount,
+          AVG(r.Score) AS AverageRating,
+          COUNT(DISTINCT r.UserId) AS NumberOfReviews
+        FROM 
+          Book b
+        LEFT JOIN 
+          Review r ON b.BookId = r.BookId
+        GROUP BY 
+          b.BookId, b.Title, b.Price, b.RatingsCount
+      )
+      SELECT 
+        bm.BookId,
+        bm.Title,
+        bm.AverageRating,
+        bm.NumberOfReviews
+      FROM 
+        BookMetrics bm
+      WHERE 
+        bm.RatingsCount > 50
+        AND bm.AverageRating > (SELECT AVG(AverageRating) FROM BookMetrics)
+      ORDER BY 
+        RANDOM() 
+      LIMIT 1; 
     `;
   } else if (type === 'author') {
     // SQL query for author recommendation
