@@ -60,7 +60,7 @@ const search_books = async function (req, res) {
       bi.image,
       bi.infoLink,
       bi.previewLink,
-      bi.AverageRating,
+      ROUND(bi.AverageRating,2) AS AverageRating,
       c.genre,
       a.name AS authorName
     FROM Book_Info bi
@@ -131,7 +131,7 @@ const top = async function (req, res) {
       SELECT
         ar.AuthorName,
         tb.TopBook,
-        ar.AverageRating,
+        ROUND(ar.AverageRating,2) AS AverageRating,
         ar.NumberOfRatings,
         ar.AverageHelpfulness
       FROM AuthorRating ar 
@@ -157,7 +157,7 @@ const top = async function (req, res) {
       SELECT 
         b.BookId,
         b.Title,
-        AVG(r.Score) AS AverageRating,
+        ROUND(AVG(r.Score),2) AS AverageRating,
         COUNT(r.UserId) AS NumberOfRatings
       FROM Book b
       JOIN Review r ON b.BookId = r.BookId
@@ -192,7 +192,7 @@ const top = async function (req, res) {
       )
       SELECT 
         PublisherName,
-        AverageRating,
+        ROUND(AverageRating,2) AS AverageRating,
         NumberOfRatings,
         AverageHelpfulness
       FROM PublisherRating
@@ -271,7 +271,7 @@ const profile = async function (req, res) {
         ab.InfoLink,
         ab.PreviewLink,
         ab.RatingsCount,
-        ab.BookRating,
+        ROUND(ab.BookRating,2) AS BookRating,
         ab.ReviewCount,
         (SELECT COUNT(DISTINCT BookId) FROM Book_Author WHERE AuthorId = a.AuthorId) AS TotalBooks,
         (SELECT AVG(Score)
@@ -343,7 +343,7 @@ const profile = async function (req, res) {
         bd.RatingsCount, 
         bd.PublishedDate, 
         bd.PublisherName, 
-        bd.AverageRating, 
+        ROUND(bd.AverageRating,2) AS AverageRating, 
         bd.ReviewCount, 
         (SELECT STRING_AGG(AuthorName, ', ') FROM BookAuthors) AS Authors, 
         (SELECT STRING_AGG(Genre, ', ') FROM BookCategories) AS Genres, 
@@ -401,7 +401,7 @@ const recommendation = async function (req, res) {
       SELECT 
         bm.BookId,
         bm.Title,
-        bm.AverageRating,
+        ROUND(bm.AverageRating,2) AS AverageRating,
         bm.NumberOfReviews
       FROM 
         BookMetrics bm
@@ -486,15 +486,15 @@ const popular_genre = async function (req, res) {
     SELECT 
       Genre,
       BookCount,
-      AverageRating,
+      ROUND(AverageRating,2) AS AverageRating,
       UserEngagement
     FROM GenrePopularity
     WHERE 
       UserEngagement > (SELECT AVG(UserEngagement) FROM GenrePopularity)
       AND BookCount > (SELECT AVG(BookCount) FROM GenrePopularity)
     ORDER BY 
-      AverageRating DESC,
       UserEngagement DESC,
+      AverageRating DESC,
       BookCount DESC
     LIMIT 5;
   `;
@@ -519,7 +519,7 @@ const review = async function (req, res) {
     SELECT 
       b.BookId,
       b.Title,
-      AVG(r.Score) AS AverageRating,
+      ROUND(AVG(r.Score),2) AS AverageRating,
       COUNT(DISTINCT r.UserId) AS NumberOfRatings,
       (SELECT summary
        FROM Review
