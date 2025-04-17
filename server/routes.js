@@ -129,6 +129,7 @@ const top = async function (req, res) {
         WHERE rank = 1
       )
       SELECT
+        ar.AuthorId,
         ar.AuthorName,
         tb.TopBook,
         ROUND(ar.AverageRating,2) AS AverageRating,
