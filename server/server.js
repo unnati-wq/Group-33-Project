@@ -6,6 +6,8 @@ const routes = require('./routes');
 const app = express();
 app.use(cors({
   origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // We use express to define our various API endpoints and
