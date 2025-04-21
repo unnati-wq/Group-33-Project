@@ -103,7 +103,7 @@ export default function AuthorCard({ authorId, handleClose }) {
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>
                 Books by {authorInfo.name}
-                {authorData.length > 5 && " (Top 5)"}
+                
               </Typography>
               
               <Grid container spacing={2}>

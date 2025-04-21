@@ -108,6 +108,9 @@ export default function GenresPage() {
 
   // Handle book click
   const handleBookClick = (bookId) => {
+    console.log(`Opening book details for ID:`, bookId);
+    console.log(`Type of bookId:`, typeof bookId);
+  
     setSelectedBookId(bookId);
   };
 

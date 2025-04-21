@@ -72,7 +72,7 @@ export default function HomePage() {
     {
       field: 'topbook',
       headerName: 'Top Book',
-      renderCell: (row) => <Link onClick={() => setSelectedBookId(row.authorname)}>{row.topbook}</Link>
+      //renderCell: (row) => <Link onClick={() => setSelectedBookId(row.authorname)}>{row.topbook}</Link>
     },
     {
       field: 'averagerating',
