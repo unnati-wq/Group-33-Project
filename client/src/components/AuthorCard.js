@@ -144,8 +144,10 @@ export default function AuthorCard({ authorId, handleClose }) {
                       
                       <Typography 
                         variant="body1" 
-                        component={NavLink} 
-                        to={`/books/${book.bookid}`}
+                        component="a"
+                        href={book.infolink}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         style={{ 
                           color: '#1976d2', 
                           textDecoration: 'none',
