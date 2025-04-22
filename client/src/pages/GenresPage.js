@@ -291,7 +291,6 @@ export default function GenresPage() {
                           <TableCell>Title</TableCell>
                           <TableCell>Author</TableCell>
                           <TableCell>Rating</TableCell>
-                          <TableCell>Reviews</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -349,7 +348,7 @@ export default function GenresPage() {
                                 </Typography>
                               </Box>
                             </TableCell>
-                            <TableCell>{book.reviewcount || 0}</TableCell>
+
                           </TableRow>
                         ))}
                       </TableBody>
