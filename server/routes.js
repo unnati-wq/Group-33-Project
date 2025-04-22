@@ -44,7 +44,7 @@ const search_books = async function (req, res) {
       FROM Book b
       JOIN Book_Category bc ON b.bookId = bc.bookId
       JOIN Book_Author ba ON b.bookID = ba.bookId
-      JOIN Review r ON b.bookID = r.bookId
+      JOIN (SELECT BookId, Score FROM Review) r ON b.bookID = r.bookId
       GROUP BY 
         b.title, 
         b.price, 
@@ -66,9 +66,9 @@ const search_books = async function (req, res) {
     FROM Book_Info bi
     JOIN Category c ON bi.categoryId = c.categoryId
     JOIN Author a ON bi.authorId = a.authorId
-    WHERE bi.title LIKE '%${title}%'
-      AND a.name LIKE '%${author}%'
-      AND c.genre LIKE '%${genre}%'
+    WHERE bi.title ILIKE '%${title}%'
+      AND a.name ILIKE '%${author}%'
+      AND c.genre ILIKE '%${genre}%'
       AND bi.price BETWEEN ${priceLow} AND ${priceHigh}
       AND bi.AverageRating BETWEEN ${ratingLow} AND ${ratingHigh}
     ORDER BY bi.AverageRating DESC
