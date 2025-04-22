@@ -171,17 +171,7 @@ export default function AuthorCard({ authorId, handleClose }) {
                 ))}
               </Grid>
               
-              {authorData.length > 5 && (
-                <Box mt={2} textAlign="center">
-                  <Button 
-                    variant="outlined" 
-                    color="primary"
-                    onClick={viewFullProfile}
-                  >
-                    View All {authorInfo.totalBooks} Books
-                  </Button>
-                </Box>
-              )}
+
             </Grid>
           </Grid>
         )}
