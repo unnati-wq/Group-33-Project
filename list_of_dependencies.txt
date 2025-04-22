@@ -1,0 +1,9 @@
+Backend: 
+	Backend: Node.js, Express (4.18.2), CORS (2.8.5), pg (8.12.0)
+	Development Tools: Nodemon (3.1.9)
+	Testing: Jest (29.3.1), Supertest (6.3.3)
+ Frontend:
+	Frontend: React (18.2)
+	Styling: React (11.10) , styled (11.10)
+	Material component: Material UI (5.11), Data Grid (5.17)
+	Testing: Jest Dom (5.16), React (13.4), User event (13.5)
