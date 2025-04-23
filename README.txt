@@ -3,7 +3,7 @@ This project is a web-enabled book recommendation system designed to help users 
 Project Structure
 client/ — Frontend application
 server/ — Backend API built with Node.js and Express
-milestone3.py - code used for cleaning, wrangling, and ingesting the data
+data/ - code used for cleaning, wrangling, and ingesting the data
 list_of_dependencies.txt - A list of dependencies
 README.txt - A README file consisting of instructions on how to run your project locally and a short description of your project as well
 
